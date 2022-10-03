@@ -45,7 +45,7 @@ final class Includes implements Flushable
             /** @var Collection */
             $includes = Collection::make(explode(',', $includes))
                 ->when($prefix !== '', function (Collection $includes) use ($prefix): Collection {
-                    return $includes->filter(fn (string $include): bool => Str::startsWith($include, $prefix));
+                    return $includes->filter(fn (string $include): bool => Str::contains($include, $prefix));
                 });
 
             return $includes->map(fn ($include): string => Str::before(Str::after($include, $prefix), '.'))
