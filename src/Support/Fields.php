@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace TiMacDonald\JsonApi\Support;
 
-use Closure;
 use Illuminate\Http\Request;
-use TiMacDonald\JsonApi\Contracts\Flushable;
+
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use WeakMap;
 
 use function array_key_exists;
 use function explode;
@@ -15,34 +16,39 @@ use function is_string;
 /**
  * @internal
  */
-final class Fields implements Flushable
+final class Fields
 {
-    private static ?Fields $instance;
+    private static self|null $instance;
 
     /**
-     * @var array<string, array<string>|null>
+     * @var WeakMap<Request, array<string, array<int, string>|null>>
      */
-    private array $cache = [];
+    private WeakMap $cache;
 
     private function __construct()
     {
-        //
-    }
-
-    public static function getInstance(): self
-    {
-        return self::$instance ??= new self();
+        $this->cache = new WeakMap();
     }
 
     /**
-     * @return array<string>
+     * @return self
      */
-    public function parse(Request $request, string $resourceType, bool $minimalAttributes): ?array
+    public static function getInstance()
     {
-        return $this->rememberResourceType("type:{$resourceType};minimal:{$minimalAttributes};", function () use ($request, $resourceType, $minimalAttributes): ?array {
+        return self::$instance ??= new static();
+    }
+
+    /**
+     * @return array<int, string>|null
+     */
+    public function parse(Request $request, string $resourceType, bool $minimalAttributes)
+    {
+        return $this->rememberResourceType($request, "type:{$resourceType};minimal:{$minimalAttributes};", function () use ($request, $resourceType, $minimalAttributes): ?array {
             $typeFields = $request->query('fields') ?? [];
 
-            abort_if(is_string($typeFields), 400, 'The fields parameter must be an array of resource types.');
+            if (is_string($typeFields)) {
+                throw new HttpException(400, 'The fields parameter must be an array of resource types.');
+            }
 
             if (! array_key_exists($resourceType, $typeFields)) {
                 return $minimalAttributes
@@ -50,13 +56,11 @@ final class Fields implements Flushable
                     : null;
             }
 
-            $fields = $typeFields[$resourceType];
+            $fields = $typeFields[$resourceType] ?? '';
 
-            if ($fields === null) {
-                return [];
+            if (! is_string($fields)) {
+                throw new HttpException(400, 'The fields parameter value must be a comma seperated list of attributes.');
             }
-
-            abort_if(! is_string($fields), 400, 'The fields parameter value must be a comma seperated list of attributes.');
 
             return array_filter(explode(',', $fields), fn (string $value): bool => $value !== '');
         });
@@ -64,23 +68,22 @@ final class Fields implements Flushable
 
     /**
      * @infection-ignore-all
-     * @return array<string>
+     *
+     * @param (callable(): (array<int, string>|null)) $callback
+     * @return array<int, string>|null
      */
-    private function rememberResourceType(string $resourceType, Closure $callback): ?array
+    private function rememberResourceType(Request $request, string $resourceType, callable $callback)
     {
-        return $this->cache[$resourceType] ??= $callback();
-    }
+        $this->cache[$request] ??= [];
 
-    public function flush(): void
-    {
-        $this->cache = [];
+        return $this->cache[$request][$resourceType] ??= $callback();
     }
 
     /**
-     * @return array<string, array<string>|null>
+     * @return void
      */
-    public function cache(): array
+    public function flush()
     {
-        return $this->cache;
+        $this->cache = new WeakMap();
     }
 }

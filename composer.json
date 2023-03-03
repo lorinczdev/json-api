@@ -3,9 +3,10 @@
     "description": "A Lightweight JSON:API Resource for Laravel",
     "keywords": [
         "laravel",
-        "json-api",
-        "jsonapi",
-        "Json API"
+        "json",
+        "api",
+        "resource",
+        "JSON-API"
     ],
     "license": "MIT",
     "authors": [
@@ -16,17 +17,25 @@
         }
     ],
     "require": {
-        "php": "^7.4 || ^8.0",
-        "laravel/framework": "^8.0 || ^9.0"
+        "php": "^8.1 || ^8.2",
+        "illuminate/collections": "^9.0 || ^10.0",
+        "illuminate/database": "^9.0 || ^10.0",
+        "illuminate/http": "^9.0 || ^10.0",
+        "illuminate/support": "^9.0 || ^10.0",
+        "symfony/http-kernel": "^6.0"
     },
     "require-dev": {
-        "bamarni/composer-bin-plugin": "^1.4"
+        "friendsofphp/php-cs-fixer": "^3.13",
+        "laravel/framework": "^9.0 || ^10.0",
+        "opis/json-schema": "^2.3",
+        "orchestra/testbench": "^7.0 || ^8.0",
+        "phpunit/phpunit": "^9.0"
     },
     "config": {
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
-            "bamarni/composer-bin-plugin": true
+            "infection/extension-installer": true
         }
     },
     "autoload": {
@@ -39,34 +48,12 @@
             "Tests\\": "tests/"
         }
     },
-    "minimum-stability": "stable",
-    "prefer-stable": true,
     "scripts": {
-        "bin": "echo 'bin not installed'",
-        "post-install-cmd": [
-            "@composer bin all install --ansi"
-        ],
-        "post-update-cmd": [
-            "@composer bin all update --ansi"
-        ],
-        "fix": [
-            "clear",
-            "@composer normalize",
-            "./vendor/bin/php-cs-fixer fix"
-        ],
-        "lint": [
-            "clear",
-            "@composer normalize --dry-run",
-            "./vendor/bin/php-cs-fixer fix --dry-run",
-            "./vendor/bin/psalm --threads=8",
-            "./vendor/bin/phpstan analyse"
-        ],
-        "test": [
-            "clear",
-            "./vendor/bin/phpunit",
-            "./vendor/bin/infection --threads=8"
-        ]
+        "test": "./vendor/bin/phpunit",
+        "fix": "./vendor/bin/php-cs-fixer fix"
     },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "support": {
         "issues": "https://github.com/timacdonald/json-api/issues",
         "source": "https://github.com/timacdonald/json-api/releases/latest",
