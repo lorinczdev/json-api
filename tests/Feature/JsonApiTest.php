@@ -11,10 +11,10 @@ use Tests\Resources\UserResource;
 use Tests\TestCase;
 use TiMacDonald\JsonApi\JsonApiResource;
 use TiMacDonald\JsonApi\JsonApiResourceCollection;
-use TiMacDonald\JsonApi\JsonApiServerImplementation;
 use TiMacDonald\JsonApi\Link;
 use TiMacDonald\JsonApi\RelationshipObject;
 use TiMacDonald\JsonApi\ResourceIdentifier;
+use TiMacDonald\JsonApi\ServerImplementation;
 
 class JsonApiTest extends TestCase
 {
@@ -36,14 +36,9 @@ class JsonApiTest extends TestCase
                 'attributes' => [
                     'name' => 'user-name',
                 ],
-                'relationships' => [],
-                'meta' => [],
-                'links' => [],
             ],
-            'included' => [],
             'jsonapi' => [
                 'version' => '1.0',
-                'meta' => [],
             ],
         ]);
         $this->assertValidJsonApi($response);
@@ -74,9 +69,6 @@ class JsonApiTest extends TestCase
                     'attributes' => [
                         'name' => 'user-name-1',
                     ],
-                    'relationships' => [],
-                    'meta' => [],
-                    'links' => [],
                 ],
                 [
                     'id' => 'user-id-2',
@@ -84,27 +76,25 @@ class JsonApiTest extends TestCase
                     'attributes' => [
                         'name' => 'user-name-2',
                     ],
-                    'relationships' => [],
-                    'meta' => [],
-                    'links' => [],
                 ],
             ],
-            'included' => [],
             'jsonapi' => [
                 'version' => '1.0',
-                'meta' => [],
             ],
         ]);
         $this->assertValidJsonApi($response);
     }
 
-    public function testItCastsEmptyAttributesAndRelationshipsToAnObject(): void
+    public function testItExcludesEmptyAttributesAndRelationships(): void
     {
         Route::get('test-route', fn () => UserResource::make((new BasicModel(['id' => 'user-id']))));
 
         $response = $this->getJson('test-route?fields[basicModels]=');
 
-        self::assertStringContainsString('"attributes":{},"relationships":{},"meta":{},"links":{}', $response->content());
+        self::assertStringNotContainsString('"attributes"', $response->content());
+        self::assertStringNotContainsString('"relationships"', $response->content());
+        self::assertStringNotContainsString('"meta"', $response->content());
+        self::assertStringNotContainsString('"links"', $response->content());
         $this->assertValidJsonApi($response);
     }
 
@@ -126,17 +116,12 @@ class JsonApiTest extends TestCase
             'data' => [
                 'id' => 'expected-id',
                 'type' => 'basicModels',
-                'attributes' => [],
-                'relationships' => [],
                 'meta' => [
                     'meta-key' => 'meta-value',
                 ],
-                'links' => [],
             ],
-            'included' => [],
             'jsonapi' => [
                 'version' => '1.0',
-                'meta' => [],
             ],
         ]);
         $this->assertValidJsonApi($response);
@@ -164,9 +149,6 @@ class JsonApiTest extends TestCase
             'data' => [
                 'id' => 'expected-id',
                 'type' => 'basicModels',
-                'attributes' => [],
-                'relationships' => [],
-                'meta' => [],
                 'links' => [
                     'self' => [
                         'href' => 'https://example.test/self',
@@ -176,18 +158,14 @@ class JsonApiTest extends TestCase
                     ],
                     'related' => [
                         'href' => 'https://example.test/related',
-                        'meta' => [],
                     ],
                     'home' => [
                         'href' => 'https://example.test',
-                        'meta' => [],
                     ],
                 ],
             ],
-            'included' => [],
             'jsonapi' => [
                 'version' => '1.0',
-                'meta' => [],
             ],
         ]);
         $this->assertValidJsonApi($response);
@@ -218,26 +196,18 @@ class JsonApiTest extends TestCase
         JsonApiResource::resolveTypeUsing(fn (BasicModel $model): string => $model::class);
         Route::get('test-route', fn () => BasicJsonApiResource::make((new BasicModel(['id' => 'expected-id']))));
 
-        $response = $this->get("test-route");
+        $response = $this->get('test-route');
 
         $response->assertExactJson([
             'data' => [
                 'id' => 'expected-id',
                 'type' => 'Tests\\Models\\BasicModel',
-                'relationships' => [],
-                'attributes' => [],
-                'meta' => [],
-                'links' => [],
             ],
-            'included' => [],
             'jsonapi' => [
                 'version' => '1.0',
-                'meta' => [],
             ],
         ]);
         $this->assertValidJsonApi($response);
-
-        JsonApiResource::resolveTypeNormally();
     }
 
     public function testItCanCustomiseTheIdResolution(): void
@@ -245,58 +215,50 @@ class JsonApiTest extends TestCase
         JsonApiResource::resolveIdUsing(fn (BasicModel $model): string => 'expected-id');
         Route::get('test-route', fn () => BasicJsonApiResource::make((new BasicModel(['id' => 'missing-id']))));
 
-        $response = $this->get("test-route");
+        $response = $this->get('test-route');
 
         $response->assertExactJson([
             'data' => [
                 'id' => 'expected-id',
                 'type' => 'basicModels',
-                'relationships' => [],
-                'attributes' => [],
-                'meta' => [],
-                'links' => [],
             ],
-            'included' => [],
             'jsonapi' => [
                 'version' => '1.0',
-                'meta' => [],
             ],
         ]);
         $this->assertValidJsonApi($response);
-
-        JsonApiResource::resolveIdNormally();
     }
 
-    public function testItCastsEmptyResourceIdentifierMetaToObject(): void
+    public function testItExcludesEmptyResourceIdentifierMeta(): void
     {
         $relationship = new ResourceIdentifier('users', '5');
 
         $json = json_encode($relationship);
 
-        self::assertSame('{"type":"users","id":"5","meta":{}}', $json);
+        self::assertSame('{"type":"users","id":"5"}', $json);
     }
 
-    public function testItCastsEmptyLinksMetaToObject(): void
+    public function testItExcludesEmptyLinksMeta(): void
     {
         $link = Link::self('https://timacdonald.me', []);
 
         $json = json_encode($link);
 
-        self::assertSame('{"href":"https:\/\/timacdonald.me","meta":{}}', $json);
+        self::assertSame('{"href":"https:\/\/timacdonald.me"}', $json);
     }
 
-    public function testItCastsEmptyImplementationMetaToObject(): void
+    public function testItExcludesEmptyImplementationMeta(): void
     {
-        $implementation = new JsonApiServerImplementation('1.5', []);
+        $implementation = new ServerImplementation('1.5', []);
 
         $json = json_encode($implementation);
 
-        self::assertSame('{"version":"1.5","meta":{}}', $json);
+        self::assertSame('{"version":"1.5"}', $json);
     }
 
     public function testItCanSpecifyAnImplementation(): void
     {
-        BasicJsonApiResource::resolveServerImplementationUsing(fn () => new JsonApiServerImplementation('1.4.3', [
+        BasicJsonApiResource::resolveServerImplementationUsing(fn () => new ServerImplementation('1.4.3', [
             'secure' => true,
         ]));
         $user = new BasicModel([
@@ -315,11 +277,7 @@ class JsonApiTest extends TestCase
                 'attributes' => [
                     'name' => 'user-name',
                 ],
-                'relationships' => [],
-                'meta' => [],
-                'links' => [],
             ],
-            'included' => [],
             'jsonapi' => [
                 'version' => '1.4.3',
                 'meta' => [
@@ -328,11 +286,9 @@ class JsonApiTest extends TestCase
             ],
         ]);
         $this->assertValidJsonApi($response);
-
-        BasicJsonApiResource::resolveServerImplementationNormally();
     }
 
-    public function testItCastsEmptyRelationshipLinkMetaToJsonObject()
+    public function testItExcludesEmptyRelationshipLinkMeta()
     {
         $resourceLink = RelationshipObject::toOne(
             new ResourceIdentifier('expected-type', 'expected-id')
@@ -340,7 +296,7 @@ class JsonApiTest extends TestCase
 
         $json = json_encode($resourceLink);
 
-        self::assertSame('{"data":{"type":"expected-type","id":"expected-id","meta":{}},"meta":{},"links":{}}', $json);
+        self::assertSame('{"data":{"type":"expected-type","id":"expected-id"}}', $json);
     }
 
     public function testItCanPopulateAllTheMetasAndAllTheLinks()
@@ -349,7 +305,7 @@ class JsonApiTest extends TestCase
         // 2. Single resource ✅
         // 3. Empty collection of resources.
         // 4. Collection of resources.
-        JsonApiResource::resolveServerImplementationUsing(fn () => (new JsonApiServerImplementation('1.0'))->withMeta([
+        JsonApiResource::resolveServerImplementationUsing(fn () => (new ServerImplementation('1.0'))->withMeta([
             'implementation' => 'meta',
         ]));
         $user = (new BasicModel([
@@ -424,7 +380,7 @@ class JsonApiTest extends TestCase
                         Link::related('profile-external.com')->withMeta([
                             'profile-external.com' => 'meta',
                         ]),
-                    ])->withResourceIdentifier(
+                    ])->pipeResourceIdentifier(
                         // This should not be in the response.
                         fn (ResourceIdentifier $identifier) => $identifier->withMeta([
                             'profile-external-resource-identifier' => 'meta',
@@ -478,7 +434,7 @@ class JsonApiTest extends TestCase
                         Link::related('avatar-external.com')->withMeta([
                             'avatar-external.com' => 'meta',
                         ]),
-                    ])->withResourceIdentifier(
+                    ])->pipeResourceIdentifier(
                         fn (ResourceIdentifier $identifier) => $identifier->withMeta([
                             'avatar-external-resource-identifier' => 'meta',
                         ])
@@ -544,7 +500,7 @@ class JsonApiTest extends TestCase
                                         Link::related('posts-internal-collection.com')->withMeta([
                                             'posts-internal-collection.com' => 'meta',
                                         ]),
-                                    ])->withResourceIdentifier(fn ($identifier) => $identifier->withMeta([
+                                    ])->pipeResourceIdentifier(fn ($identifier) => $identifier->withMeta([
                                         'posts-internal-collection-resource-identifier' => 'meta',
                                     ]))
                                 );
@@ -557,7 +513,7 @@ class JsonApiTest extends TestCase
                         ])->withMeta([
                             'posts-external-resource-link' => 'meta',
                         ]))
-                        ->map(fn ($post) => $post->withResourceIdentifier(static fn ($identifier) => $identifier->withMeta([
+                        ->map(fn ($post) => $post->pipeResourceIdentifier(static fn ($identifier) => $identifier->withMeta([
                             'posts-external-resource-identifier' => 'meta',
                         ]))->withMeta([
                             'posts-external' => 'meta',
@@ -581,7 +537,6 @@ class JsonApiTest extends TestCase
             'data' => [
                 'id' => 'user-id',
                 'type' => 'basicModels',
-                'attributes' => [],
                 'relationships' => [
                     'profile' => [
                         'data' => null,
@@ -696,8 +651,6 @@ class JsonApiTest extends TestCase
                 [
                     'id' => 'avatar-id',
                     'type' => 'basicModels',
-                    'attributes' => [],
-                    'relationships' => [],
                     'meta' => [
                         'avatar-internal' => 'meta',
                         'avatar-external' => 'meta',
@@ -720,8 +673,6 @@ class JsonApiTest extends TestCase
                 [
                     'id' => 'post-id-1',
                     'type' => 'basicModels',
-                    'attributes' => [],
-                    'relationships' => [],
                     'meta' => [
                         'posts-internal' => 'meta',
                         'posts-internal-collection' => 'meta',
@@ -742,15 +693,12 @@ class JsonApiTest extends TestCase
                         ],
                         'external' => [
                             'href' => 'posts.com',
-                            'meta' => [],
                         ],
                     ],
                 ],
                 [
                     'id' => 'post-id-2',
                     'type' => 'basicModels',
-                    'attributes' => [],
-                    'relationships' => [],
                     'meta' => [
                         'posts-internal' => 'meta',
                         'posts-internal-collection' => 'meta',
@@ -771,7 +719,6 @@ class JsonApiTest extends TestCase
                         ],
                         'external' => [
                             'href' => 'posts.com',
-                            'meta' => [],
                         ],
                     ],
                 ],
@@ -784,7 +731,5 @@ class JsonApiTest extends TestCase
             ],
         ]);
         $this->assertValidJsonApi($response);
-
-        JsonApiResource::resolveServerImplementationNormally();
     }
 }

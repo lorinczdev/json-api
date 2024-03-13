@@ -24,6 +24,11 @@ use function is_int;
 trait Relationships
 {
     /**
+     * @var Collection<string, JsonApiResource|JsonApiResourceCollection>|null
+     */
+    private Collection|null $requestedRelationshipsCache = null;
+
+    /**
      * @internal
      *
      * @var (callable(string, JsonApiResource): class-string)|null
@@ -53,10 +58,11 @@ trait Relationships
      */
     public function withIncludePrefix(string $prefix)
     {
-        $this->includePrefix = "{$this->includePrefix}{$prefix}.";
+        $this->includePrefix = self::joinIncludes($this->includePrefix, $prefix);
 
         return $this;
     }
+
 
     /**
      * @internal
@@ -102,10 +108,10 @@ trait Relationships
      */
     private function requestedRelationships(Request $request)
     {
-        return $this->rememberRequestRelationships(fn (): Collection => $this->resolveRelationships($request)
+        return $this->requestedRelationshipsCache ??= $this->resolveRelationships($request)
             ->only($this->requestedIncludes($request))
             ->map(fn (callable $value, string $prefix): null|JsonApiResource|JsonApiResourceCollection => $this->resolveInclude($value(), $prefix))
-            ->reject(fn (JsonApiResource|JsonApiResourceCollection|null $resource): bool => $resource === null));
+            ->reject(fn (JsonApiResource|JsonApiResourceCollection|null $resource): bool => $resource === null);
     }
 
     /**
@@ -117,7 +123,9 @@ trait Relationships
     {
         return match (true) {
             $resource instanceof PotentiallyMissing && $resource->isMissing() => null,
-            $resource instanceof JsonApiResource || $resource instanceof JsonApiResourceCollection => $resource->withIncludePrefix($prefix),
+            $resource instanceof JsonApiResource || $resource instanceof JsonApiResourceCollection => $resource->withIncludePrefix(
+                self::joinIncludes($this->includePrefix, $prefix)
+            ),
             default => throw UnknownRelationshipException::from($resource),
         };
     }
@@ -183,7 +191,7 @@ trait Relationships
      */
     private static function guessRelationshipResource(string $relationship, JsonApiResource $resource)
     {
-        return (self::$relationshipResourceGuesser ?? function (string $relationship, JsonApiResource $resource): string {
+        return (self::$relationshipResourceGuesser ??= function (string $relationship, JsonApiResource $resource): string {
             $relationship = Str::of($relationship);
 
             foreach ([
@@ -197,5 +205,21 @@ trait Relationships
 
             throw new RuntimeException('Unable to guess the resource class for relationship ['.$value.'] for ['.$resource::class.'].');
         })($relationship, $resource);
+    }
+
+    /**
+     * @internal
+     */
+    private static function joinIncludes(string $start, string $finish): string
+    {
+        $prefix = '';
+
+        if ($start !== '') {
+            $prefix = Str::finish($start, '.');
+        }
+
+        $prefix .= Str::finish($finish, '.');
+
+        return $prefix;
     }
 }

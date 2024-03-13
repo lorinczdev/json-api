@@ -13,15 +13,11 @@ final class RelationshipObject implements JsonSerializable
     use Concerns\Meta;
 
     /**
-     * @internal
-     *
      * @var ResourceIdentifier|null|array<int, ResourceIdentifier>
      */
     private ResourceIdentifier|array|null $data;
 
     /**
-     * @api
-     *
      * @param array<int, Link> $links
      * @param array<string, mixed> $meta
      * @return self
@@ -32,8 +28,6 @@ final class RelationshipObject implements JsonSerializable
     }
 
     /**
-     * @api
-     *
      * @param array<int, ResourceIdentifier> $data
      * @param array<int, Link> $links
      * @param array<string, mixed> $meta
@@ -45,8 +39,6 @@ final class RelationshipObject implements JsonSerializable
     }
 
     /**
-     * @internal
-     *
      * @param ResourceIdentifier|null|array<int, ResourceIdentifier> $data
      * @param array<int, Link> $links
      * @param array<string, mixed> $meta
@@ -60,18 +52,15 @@ final class RelationshipObject implements JsonSerializable
         $this->meta = $meta;
     }
 
-
     /**
-     * @internal
-     *
-     * @return array{data: ResourceIdentifier|null|array<int, ResourceIdentifier>, meta: stdClass, links: stdClass}
+     * @return array{data: ResourceIdentifier|null|array<int, ResourceIdentifier>, meta?: stdClass, links?: stdClass}
      */
     public function jsonSerialize(): array
     {
         return [
             'data' => $this->data,
-            'meta' => (object) $this->meta,
-            'links' => (object) self::parseLinks($this->links),
+            ...$this->meta ? ['meta' => (object) $this->meta] : [],
+            ...$this->links ? ['links' => (object) self::parseLinks($this->links)] : [],
         ];
     }
 }

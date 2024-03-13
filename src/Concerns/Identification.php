@@ -6,151 +6,91 @@ namespace TiMacDonald\JsonApi\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 use TiMacDonald\JsonApi\Exceptions\ResourceIdentificationException;
 use TiMacDonald\JsonApi\ResourceIdentifier;
 
+/**
+ * @internal
+ */
 trait Identification
 {
-    /**
-     * @internal
-     *
-     * @var  (callable(mixed, Request): string)|null
-     */
-    private static $idResolver;
+    private string|null $idCache = null;
+
+    private string|null $typeCache = null;
 
     /**
-     * @internal
-     *
-     * @var  (callable(mixed, Request): string)|null
-     */
-    private static $typeResolver;
-
-    /**
-     * @internal
-     *
      * @var array<int, (callable(ResourceIdentifier): void)>
      */
     private array $resourceIdentifierCallbacks = [];
 
     /**
-     * @api
-     *
-     * @param (callable(ResourceIdentifier): void) $callback
-     * @return $this
-     */
-    public function withResourceIdentifier(callable $callback)
-    {
-        $this->resourceIdentifierCallbacks[] = $callback;
-
-        return $this;
-    }
-
-    /**
-     * @api
-     *
      * @param (callable(mixed): string) $callback
      * @return void
      */
     public static function resolveIdUsing(callable $callback)
     {
-        self::$idResolver = $callback;
+        App::instance(self::class.':$idResolver', $callback);
     }
 
     /**
-     * @api
-     *
      * @param (callable(mixed): string) $callback
      * @return void
      */
     public static function resolveTypeUsing(callable $callback)
     {
-        self::$typeResolver = $callback;
+        App::instance(self::class.':$typeResolver', $callback);
     }
 
     /**
-     * @internal
-     *
-     * @return void
-     */
-    public static function resolveIdNormally()
-    {
-        self::$idResolver = null;
-    }
-
-    /**
-     * @internal
-     *
-     * @return void
-     */
-    public static function resolveTypeNormally()
-    {
-        self::$typeResolver = null;
-    }
-
-    /**
-     * @internal
-     *
-     * @return string
-     */
-    public function toUniqueResourceIdentifier(Request $request)
-    {
-        return "type:{$this->resolveType($request)};id:{$this->resolveId($request)};";
-    }
-
-    /**
-     * @internal
-     *
-     * @return string
-     */
-    private function resolveId(Request $request)
-    {
-        return $this->rememberId(fn (): string => $this->toId($request));
-    }
-
-    /**
-     * @internal
-     *
-     * @return string
-     */
-    private function resolveType(Request $request)
-    {
-        return $this->rememberType(fn (): string => $this->toType($request));
-    }
-
-    /**
-     * @internal
-     *
      * @return (callable(mixed, Request): string)
      */
     private static function idResolver()
     {
-        return self::$idResolver ?? function (mixed $resource, Request $request): string {
-            if (! $resource instanceof Model) {
-                throw ResourceIdentificationException::attemptingToDetermineIdFor($resource);
-            }
+        if (! App::bound(self::class.':$idResolver')) {
+            return App::instance(self::class.':$idResolver', function (mixed $resource, Request $request): string {
+                if (! $resource instanceof Model) {
+                    throw ResourceIdentificationException::attemptingToDetermineIdFor($resource);
+                }
 
-            /**
-             * @phpstan-ignore-next-line
-             */
-            return (string) $resource->getKey();
-        };
+                /**
+                 * @phpstan-ignore-next-line
+                 */
+                return (string) $resource->getKey();
+            });
+        }
+
+        return App::make(self::class.':$idResolver');
     }
 
     /**
-     * @internal
-     *
      * @return (callable(mixed, Request): string)
      */
     private static function typeResolver()
     {
-        return self::$typeResolver ?? function (mixed $resource, Request $request): string {
-            if (! $resource instanceof Model) {
-                throw ResourceIdentificationException::attemptingToDetermineTypeFor($resource);
-            }
+        if (! App::bound(self::class.':$typeResolver')) {
+            return App::instance(self::class.':$typeResolver', function (mixed $resource, Request $request): string {
+                if (! $resource instanceof Model) {
+                    throw ResourceIdentificationException::attemptingToDetermineTypeFor($resource);
+                }
 
-            return Str::camel($resource->getTable());
-        };
+                return Str::camel($resource->getTable());
+            });
+        }
+
+        return App::make(self::class.':$typeResolver');
+    }
+
+    /**
+     * @param (callable(ResourceIdentifier): void) $callback
+     * @return $this
+     */
+    public function pipeResourceIdentifier(callable $callback)
+    {
+        $this->resourceIdentifierCallbacks[] = $callback;
+
+        return $this;
     }
 
     /**
@@ -160,10 +100,38 @@ trait Identification
      */
     public function resolveResourceIdentifier(Request $request)
     {
-        return tap($this->toResourceIdentifier($request), function (ResourceIdentifier $identifier): void {
+        return with($this->toResourceIdentifier($request), function (ResourceIdentifier $identifier): ResourceIdentifier {
             foreach ($this->resourceIdentifierCallbacks as $callback) {
-                $callback($identifier);
+                $identifier = $callback($identifier);
             }
+
+            return $identifier;
         });
+    }
+
+    /**
+     * @internal
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function uniqueKey(Request $request)
+    {
+        return [$this->resolveType($request), $this->resolveId($request)];
+    }
+
+    /**
+     * @return string
+     */
+    private function resolveId(Request $request)
+    {
+        return $this->idCache ??= $this->toId($request);
+    }
+
+    /**
+     * @return string
+     */
+    private function resolveType(Request $request)
+    {
+        return $this->typeCache ??= $this->toType($request);
     }
 }

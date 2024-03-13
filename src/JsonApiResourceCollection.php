@@ -13,8 +13,6 @@ class JsonApiResourceCollection extends AnonymousResourceCollection
     use Concerns\RelationshipLinks;
 
     /**
-     * @api
-     *
      * @param (callable(JsonApiResource): JsonApiResource) $callback
      * @return $this
      */
@@ -26,8 +24,6 @@ class JsonApiResourceCollection extends AnonymousResourceCollection
     }
 
     /**
-     * @api
-     *
      * @return RelationshipObject
      */
     public function toResourceLink(Request $request)
@@ -36,55 +32,48 @@ class JsonApiResourceCollection extends AnonymousResourceCollection
     }
 
     /**
-     * @internal
-     *
      * @return Collection<int, ResourceIdentifier>
      */
     private function resolveResourceIdentifiers(Request $request)
     {
         return $this->collection
-            ->uniqueStrict(fn (JsonApiResource $resource): string => $resource->toUniqueResourceIdentifier($request))
+            ->uniqueStrict(fn (JsonApiResource $resource): array => $resource->uniqueKey($request))
             ->map(fn (JsonApiResource $resource): ResourceIdentifier => $resource->resolveResourceIdentifier($request));
     }
 
     /**
-     * @api
-     *
-     * @param Request $request
-     * @return array{included: Collection<int, JsonApiResource>, jsonapi: JsonApiServerImplementation}
+     * @return array{included?: array<int, JsonApiResource>, jsonapi?: JsonApiServerImplementation}
      */
-    public function with($request)
+    public function with(Request $request)
     {
         return [
-            'included' => $this->collection
+            ...($included = $this->collection
                 ->map(fn (JsonApiResource $resource): Collection => $resource->included($request))
                 ->flatten()
-                ->uniqueStrict(fn (JsonApiResource $resource): string => $resource->toUniqueResourceIdentifier($request))
-                ->values(),
-            'jsonapi' => JsonApiResource::serverImplementationResolver()($request),
+                ->uniqueStrict(fn (JsonApiResource $resource): array => $resource->uniqueKey($request))
+                ->values()
+                ->all()) ? ['included' => $included] : [],
+            ...($implementation = $this->collects::toServerImplementation($request))
+                ? ['jsonapi' => $implementation] : [],
         ];
     }
 
     /**
-     * @api
-     *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function toResponse($request)
     {
-        return tap(parent::toResponse($request)->header('Content-type', 'application/vnd.api+json'), fn () => $this->flush());
+        // TODO: should this header be configurable? Should it be a middleware? Should we not set it if one exists?
+        return tap(parent::toResponse($request)->header('Content-type', 'application/vnd.api+json'), $this->flush(...));
     }
 
     /**
-     * @api
-     *
-     * @param Request $request
      * @param array<array-key, mixed> $paginated
      * @param array{links: array<string, ?string>} $default
      * @return array{links: array<string, string>}
      */
-    public function paginationInformation($request, $paginated, $default)
+    public function paginationInformation(Request $request, array $paginated, array $default)
     {
         if (isset($default['links'])) {
             $default['links'] = array_filter($default['links'], fn (?string $link): bool => $link !== null);
@@ -111,9 +100,9 @@ class JsonApiResourceCollection extends AnonymousResourceCollection
      */
     public function withIncludePrefix(string $prefix)
     {
-        return tap($this, function (JsonApiResourceCollection $resource) use ($prefix): void {
-            $resource->collection->each(fn (JsonApiResource $resource): JsonApiResource => $resource->withIncludePrefix($prefix));
-        });
+        $this->collection->each(fn (JsonApiResource $resource): JsonApiResource => $resource->withIncludePrefix($prefix));
+
+        return $this;
     }
 
     /**

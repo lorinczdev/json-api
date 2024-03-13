@@ -25,8 +25,6 @@ abstract class JsonApiResource extends JsonResource
     use Concerns\Relationships;
 
     /**
-     * @api
-     *
      * @return array<string, mixed>
      */
     public function toAttributes(Request $request)
@@ -37,8 +35,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @return array<string, (callable(): JsonApiResource|JsonApiResourceCollection|PotentiallyMissing)>
      */
     public function toRelationships(Request $request)
@@ -49,8 +45,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @return array<int, Link>
      */
     public function toLinks(Request $request)
@@ -61,8 +55,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @return array<string, mixed>
      */
     public function toMeta(Request $request)
@@ -73,8 +65,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @return string
      */
     public function toId(Request $request)
@@ -83,8 +73,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-    * @api
-     *
      * @return string
      */
     public function toType(Request $request)
@@ -93,8 +81,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @return RelationshipObject
      */
     public function toResourceLink(Request $request)
@@ -105,8 +91,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @return ResourceIdentifier
      */
     public function toResourceIdentifier(Request $request)
@@ -115,46 +99,51 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
-     * @param Request $request
-     * @return array{id: string, type: string, attributes: stdClass, relationships: stdClass, meta: stdClass, links: stdClass}
+     * @return JsonApiServerImplementation|null
+     */
+    public static function toServerImplementation(Request $request)
+    {
+        return self::serverImplementationResolver()($request);
+    }
+
+    /**
+     * @return array{id: string, type: string, attributes?: stdClass, relationships?: stdClass, meta?: stdClass, links?: stdClass}
      */
     public function toArray($request)
     {
         return [
             'id' => $this->resolveId($request),
             'type' => $this->resolveType($request),
-            'attributes' => (object) $this->requestedAttributes($request)->all(),
-            'relationships' => (object) $this->requestedRelationshipsAsIdentifiers($request)->all(),
-            'meta' => (object) array_merge($this->toMeta($request), $this->meta),
-            'links' => (object) self::parseLinks(array_merge($this->toLinks($request), $this->links)),
+            ...Collection::make([
+                'attributes' => $this->requestedAttributes($request)->all(),
+                'relationships' => $this->requestedRelationshipsAsIdentifiers($request)->all(),
+                'links' => self::parseLinks(array_merge($this->toLinks($request), $this->links)),
+                'meta' => array_merge($this->toMeta($request), $this->meta),
+            ])->filter()->map(fn ($value) => (object) $value),
         ];
     }
 
     /**
-     * @api
-     *
-     * @param Request $request
-     * @return array{included: Collection<int, JsonApiResource>, jsonapi: JsonApiServerImplementation}
+     * @return array{included?: array<int, JsonApiResource>, jsonapi: JsonApiServerImplementation}
      */
-    public function with($request)
+    public function with(Request $request)
     {
         return [
-            'included' => $this->included($request)
-                ->uniqueStrict(fn (JsonApiResource $resource): string => $resource->toUniqueResourceIdentifier($request))
-                ->values(),
-            'jsonapi' => self::serverImplementationResolver()($request),
+            ...($included = $this->included($request)
+                ->uniqueStrict(fn (JsonApiResource $resource): array => $resource->uniqueKey($request))
+                ->values()
+                ->all()) ? ['included' => $included] : [],
+            ...($implementation = self::toServerImplementation($request))
+                ? ['jsonapi' => $implementation] : [],
         ];
     }
 
     /**
-     * @api
+     * TODO this may be removed once all supported versions have `newCollection`.
      *
-     * @param mixed $resource
      * @return JsonApiResourceCollection<int, mixed>
      */
-    public static function collection($resource)
+    public static function collection(mixed $resource)
     {
         return tap(static::newCollection($resource), function (JsonApiResourceCollection $collection): void {
             if (property_exists(static::class, 'preserveKeys')) {
@@ -165,8 +154,6 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @return JsonApiResourceCollection<int, mixed>
      */
     public static function newCollection(mixed $resource)
@@ -175,14 +162,12 @@ abstract class JsonApiResource extends JsonResource
     }
 
     /**
-     * @api
-     *
      * @param Request $request
      * @return JsonResponse
      */
     public function toResponse($request)
     {
-        // TODO: the flush call here is triggering repeated Includes::flush() cals, because of collection.s
-        return tap(parent::toResponse($request)->header('Content-type', 'application/vnd.api+json'), fn () => $this->flush());
+        // TODO: should this header be configurable? Should it be a middleware? Should we not set it if one exists?
+        return tap(parent::toResponse($request)->header('Content-type', 'application/vnd.api+json'), $this->flush(...));
     }
 }
