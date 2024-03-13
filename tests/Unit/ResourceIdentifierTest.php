@@ -18,22 +18,22 @@ class ResourceIdentifierTest extends TestCase
         $this->assertSame('{"type":"expected-type","id":"expected-id","meta":{"expected":"meta"}}', $serialized);
     }
 
-    public function testEmptyMetaIsObject(): void
+    public function testEmptyMetaIsExcluded(): void
     {
         $identifier = new ResourceIdentifier('expected-type', 'expected-id', []);
 
         $serialized = json_encode($identifier);
 
-        $this->assertSame('{"type":"expected-type","id":"expected-id","meta":{}}', $serialized);
+        $this->assertSame('{"type":"expected-type","id":"expected-id"}', $serialized);
     }
 
-    public function testMissingMetaIsObject(): void
+    public function testMissingMetaIsExcluded(): void
     {
         $identifier = new ResourceIdentifier('expected-type', 'expected-id');
 
         $serialized = json_encode($identifier);
 
-        $this->assertSame('{"type":"expected-type","id":"expected-id","meta":{}}', $serialized);
+        $this->assertSame('{"type":"expected-type","id":"expected-id"}', $serialized);
     }
 
     public function testMetaCanBeAppended(): void
@@ -41,7 +41,7 @@ class ResourceIdentifierTest extends TestCase
         $identifier = (new ResourceIdentifier('expected-type', 'expected-id', ['original' => 'meta']));
 
         $serialized = json_encode(
-            $identifier->withMeta(['expected' => 'meta'])->withMeta(["another" => "one"])
+            $identifier->withMeta(['expected' => 'meta'])->withMeta(['another' => 'one'])
         );
 
         $this->assertSame('{"type":"expected-type","id":"expected-id","meta":{"original":"meta","expected":"meta","another":"one"}}', $serialized);

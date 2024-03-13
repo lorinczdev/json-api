@@ -7,50 +7,33 @@ namespace TiMacDonald\JsonApi\Concerns;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\PotentiallyMissing;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use TiMacDonald\JsonApi\Support\Fields;
 
+/**
+ * @internal
+ */
 trait Attributes
 {
     /**
-     * @internal
-     */
-    private static bool $minimalAttributes = false;
-
-    /**
-     * @api
-     *
-     * @param  (callable(): void)|null  $callback
      * @return void
      */
-    public static function minimalAttributes(callable|null $callback = null)
+    public static function useMinimalAttributes()
     {
-        self::$minimalAttributes = true;
-
-        if ($callback === null) {
-            return;
-        }
-
-        try {
-            $callback();
-        } finally {
-            self::$minimalAttributes = false;
-        }
+        App::instance(self::class.':$minimalAttributes', true);
     }
 
     /**
-     * @api
-     * @infection-ignore-all
-     *
-     * @return void
+     * @return bool
      */
-    public static function maximalAttributes()
+    private static function minimalAttributes()
     {
-        self::$minimalAttributes = false;
+        return App::bound(self::class.':$minimalAttributes')
+            ? App::make(self::class.':$minimalAttributes')
+            : false;
     }
 
     /**
-     * @internal
-     *
      * @return Collection<string, mixed>
      */
     private function requestedAttributes(Request $request)
@@ -62,8 +45,6 @@ trait Attributes
     }
 
     /**
-     * @internal
-     *
      * @return Collection<string, mixed>
      */
     private function resolveAttributes(Request $request)
@@ -76,12 +57,10 @@ trait Attributes
     }
 
     /**
-     * @internal
-     *
      * @return array<int, string>|null
      */
     private function requestedFields(Request $request)
     {
-        return Fields::getInstance()->parse($request, $this->toType($request), self::$minimalAttributes);
+        return Fields::getInstance()->parse($request, $this->toType($request), self::minimalAttributes());
     }
 }

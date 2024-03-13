@@ -31,7 +31,7 @@ class FeatureTest extends TestCase
         }
         Route::get('test-route', fn () => UserResource::collection(BasicModel::paginate(2)));
 
-        $response = $this->withoutExceptionHandling()->getJson('test-route');
+        $response = $this->getJson('test-route');
 
         $response->assertOk();
         $response->assertExactJson([
@@ -42,9 +42,6 @@ class FeatureTest extends TestCase
                     'attributes' => [
                         'name' => 'name-0',
                     ],
-                    'relationships' => [],
-                    'links' => [],
-                    'meta' => [],
                 ],
                 [
                     'id' => '2',
@@ -52,12 +49,8 @@ class FeatureTest extends TestCase
                     'attributes' => [
                         'name' => 'name-1',
                     ],
-                    'relationships' => [],
-                    'links' => [],
-                    'meta' => [],
                 ],
             ],
-            'included' => [],
             'links' => [
                 'first' => 'http://localhost/test-route?page=1',
                 'last' => 'http://localhost/test-route?page=3',
@@ -71,36 +64,35 @@ class FeatureTest extends TestCase
                 'last_page' => 3,
                 'total' => 5,
                 'path' => 'http://localhost/test-route',
-                "links" => [
+                'links' => [
                     [
-                        "active" => false,
-                        "label" => "&laquo; Previous",
-                        "url" => null,
+                        'active' => false,
+                        'label' => '&laquo; Previous',
+                        'url' => null,
                     ],
                     [
-                        "active" => true,
-                        "label" => "1",
-                        "url" => "http://localhost/test-route?page=1",
+                        'active' => true,
+                        'label' => '1',
+                        'url' => 'http://localhost/test-route?page=1',
                     ],
                     [
-                        "active" => false,
-                        "label" => "2",
-                        "url" => "http://localhost/test-route?page=2",
+                        'active' => false,
+                        'label' => '2',
+                        'url' => 'http://localhost/test-route?page=2',
                     ],
                     [
-                        "active" => false,
-                        "label" => "3",
-                        "url" => "http://localhost/test-route?page=3",
+                        'active' => false,
+                        'label' => '3',
+                        'url' => 'http://localhost/test-route?page=3',
                     ],
                     [
-                        "active" => false,
-                        "label" => "Next &raquo;",
-                        "url" => "http://localhost/test-route?page=2",
+                        'active' => false,
+                        'label' => 'Next &raquo;',
+                        'url' => 'http://localhost/test-route?page=2',
                     ],
                 ],
             ],
             'jsonapi' => [
-                'meta' => [],
                 'version' => '1.0',
             ],
         ]);

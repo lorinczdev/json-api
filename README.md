@@ -27,7 +27,7 @@ A lightweight API resource for Laravel that helps you adhere to the `JSON:API` s
 ## Version support
 
 - **PHP**: `8.1`, `8.2`
-- **Laravel**: `^8.73.2`, `^9.0`, `10.x-dev`
+- **Laravel**: `9.0`, `10.0`
 
 ## Installation
 
@@ -67,11 +67,11 @@ class UserController
 }
 ```
 
-As we make our way through the examples you will see that new APIs are introduced when interacting with the class _internally_, e.g. the `toArray()` method is no longer used.
+As we make our way through the examples you will see that new APIs are introduced when interacting with the class _internally_, for example, the `toArray()` method is no longer used.
 
 ### Creating your first `JSON:API` resource
 
-To get started, let's create a `UserResource` for our `User` model. In our user resource will expose the users's `name`, `website`, and `twitter_handle` in the response.
+To get started, let's create a `UserResource` for our `User` model. In our user resource will expose the user's `name`, `website`, and `twitter_handle` in the response.
 
 First we will create a new API resource that extends `TiMacDonald\JsonApi\JsonApiResource`.
 
@@ -101,9 +101,6 @@ use TiMacDonald\JsonApi\JsonApiResource;
 
 class UserResource extends JsonApiResource
 {
-    /**
-     * @var string[]
-     */
     public $attributes = [
         'name',
         'website',
@@ -129,12 +126,8 @@ The following `JSON:API` formatted data would be returned:
       "name": "Tim",
       "website": "https://timacdonald.me",
       "twitter_handle": "@timacdonald87"
-    },
-    "relationships": {},
-    "meta": {},
-    "links": {}
-  },
-  "included": []
+    }
+  }
 }
 ```
 
@@ -167,18 +160,12 @@ use TiMacDonald\JsonApi\JsonApiResource;
 
 class UserResource extends JsonApiResource
 {
-    /**
-     * @var string[]
-     */
     public $attributes = [
         'name',
         'website',
         'twitter_handle',
     ];
 
-    /**
-     * @var array<string, class-string>
-     */
     public $relationships = [
         'team' => TeamResource::class,
         'posts' => PostResource::class,
@@ -197,18 +184,12 @@ use TiMacDonald\JsonApi\JsonApiResource;
 
 class UserResource extends JsonApiResource
 {
-    /**
-     * @var string[]
-     */
     public $attributes = [
         'name',
         'website',
         'twitter_handle',
     ];
 
-    /**
-     * @var array<int|string, string>
-     */
     public $relationships = [
         'team',
         'posts',
@@ -217,6 +198,8 @@ class UserResource extends JsonApiResource
 ```
 
 ##### Example request and response
+
+The client may now request these relationships via the `include` query parameter.
 
 `GET /users/74812?include=posts,team`
 
@@ -237,30 +220,21 @@ class UserResource extends JsonApiResource
         "data": [
           {
             "type": "posts",
-            "id": "25240",
-            "meta": {}
+            "id": "25240"
           },
           {
             "type": "posts",
-            "id": "39974",
-            "meta": {}
+            "id": "39974"
           }
-        ],
-        "meta": {},
-        "links": {}
+        ]
       },
       "team": {
         "data": {
           "type": "teams",
-          "id": "18986",
-          "meta": {}
-        },
-        "meta": {},
-        "links": {}
+          "id": "18986"
+        }
       }
-    },
-    "meta": {},
-    "links": {}
+    }
   },
   "included": [
     {
@@ -270,10 +244,7 @@ class UserResource extends JsonApiResource
         "title": "So what is `JSON:API` all about anyway?",
         "content": "...",
         "excerpt": "..."
-      },
-      "relationships": {},
-      "meta": {},
-      "links": {}
+      }
     },
     {
       "id": "39974",
@@ -282,20 +253,14 @@ class UserResource extends JsonApiResource
         "title": "Building an API with Laravel, using the `JSON:API` specification.",
         "content": "...",
         "excerpt": "..."
-      },
-      "relationships": {},
-      "meta": {},
-      "links": {}
+      }
     },
     {
       "id": "18986",
       "type": "teams",
       "attributes": {
         "name": "Laravel"
-      },
-      "relationships": {},
-      "meta": {},
-      "links": {}
+      }
     }
   ]
 }
@@ -398,12 +363,8 @@ class UserResource extends JsonApiResource
         "city": "Melbourne",
         "country": "Australia"
       }
-    },
-    "relationships": {},
-    "meta": {},
-    "links": {}
-  },
-  "included": []
+    }
+  }
 }
 ```
 
@@ -439,15 +400,10 @@ GET /posts?include=author&fields[posts]=title,excerpt&fields[users]=name
         "author": {
           "data": {
             "type": "users",
-            "id": "74812",
-            "meta": {}
-          },
-          "meta": {},
-          "links": {}
+            "id": "74812"
+          }
         }
-      },
-      "meta": {},
-      "links": {}
+      }
     },
     {
       "id": "39974",
@@ -460,15 +416,10 @@ GET /posts?include=author&fields[posts]=title,excerpt&fields[users]=name
         "author": {
           "data": {
             "type": "users",
-            "id": "74812",
-            "meta": {}
-          },
-          "meta": {},
-          "links": {}
+            "id": "74812"
+          }
         }
-      },
-      "meta": {},
-      "links": {}
+      }
     }
   ],
   "included": [
@@ -477,10 +428,7 @@ GET /posts?include=author&fields[posts]=title,excerpt&fields[users]=name
       "id": "74812",
       "attributes": {
         "name": "Tim"
-      },
-      "relationships": {},
-      "meta": {},
-      "links": {}
+      }
     }
   ]
 }
@@ -490,7 +438,7 @@ GET /posts?include=author&fields[posts]=title,excerpt&fields[users]=name
 
 Resources return a maximal attribute payload when [sparse fieldsets](#sparse-fieldsets) are not in use i.e. all declared attributes on the resource are returned. If you prefer you can make the use of sparse fieldsets required in order to retrieve _any_ attributes.
 
-You may call the `minimalAttributes()` method in an application service provider.
+You may call the `useMinimalAttributes()` method in an application service provider.
 
 ```php
 <?php
@@ -504,7 +452,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function boot()
     {
-        JsonApiResource::minimalAttributes();
+        JsonApiResource::useMinimalAttributes();
 
         // ...
     }
@@ -740,3 +688,5 @@ And a special (vegi) thanks to [Caneco](https://twitter.com/caneco) for the logo
 - Allow resources to specify their JsonResource class.
 - Make all caches WeakMaps.
 - Things that "must" need to be first in the __consstructor. See Links:href
+- Should it be withResourceIdentifier or mapResourceIdentifier. Feel like we are mapping. or pipeResourceIdentifier
+- Should all caches use weakmap with request key?

@@ -9,12 +9,12 @@ use Opis\JsonSchema\Validator;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 use RuntimeException;
 
+use TiMacDonald\JsonApi\JsonApiResource;
+
 use function is_string;
 
 class TestCase extends BaseTestCase
 {
-    public static $latestResponse;
-
     public const JSON_API_SCHEMA_URL = 'http://jsonapi.org/schema';
 
     public function setUp(): void
@@ -36,7 +36,12 @@ class TestCase extends BaseTestCase
 
         $data = json_decode(json_encode($data));
 
-        $result = $this->jsonApiValidator()->validate($data, self::JSON_API_SCHEMA_URL);
+        $result = tap(new Validator(), function ($validator) {
+            $validator->resolver()->registerFile(
+                self::JSON_API_SCHEMA_URL,
+                $this->localSchemaPath(self::JSON_API_SCHEMA_URL)
+            );
+        })->validate($data, self::JSON_API_SCHEMA_URL);
 
         if ($result->isValid()) {
             $this->assertTrue($result->isValid());
@@ -48,18 +53,6 @@ class TestCase extends BaseTestCase
             $result->isValid(),
             print_r((new \Opis\JsonSchema\Errors\ErrorFormatter())->format($result->error()), true)
         );
-    }
-
-    private function jsonApiValidator(): Validator
-    {
-        $validator = new Validator();
-
-        $validator->resolver()->registerFile(
-            self::JSON_API_SCHEMA_URL,
-            $this->localSchemaPath(self::JSON_API_SCHEMA_URL)
-        );
-
-        return $validator;
     }
 
     private function localSchemaPath(string $url): string

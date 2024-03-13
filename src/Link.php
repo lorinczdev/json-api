@@ -16,14 +16,9 @@ final class Link implements JsonSerializable
      */
     public string $key;
 
-    /**
-     * @internal
-     */
     private string $href;
 
     /**
-     * @api
-     *
      * @param array<string, mixed> $meta
      * @return self
      */
@@ -33,8 +28,6 @@ final class Link implements JsonSerializable
     }
 
     /**
-     * @api
-     *
      * @param array<string, mixed> $meta
      * @return self
      */
@@ -44,8 +37,6 @@ final class Link implements JsonSerializable
     }
 
     /**
-     * @api
-     *
      * @param array<string, mixed> $meta
      */
     public function __construct(string $key, string $href, array $meta = [])
@@ -58,15 +49,13 @@ final class Link implements JsonSerializable
     }
 
     /**
-     * @internal
-     *
-     * @return array{href: string, meta: stdClass}
+     * @return array{href: string, meta?: stdClass}
      */
     public function jsonSerialize(): array
     {
         return [
             'href' => $this->href,
-            'meta' => (object) $this->meta,
+            ...$this->meta ? ['meta' => (object) $this->meta] : [],
         ];
     }
 }

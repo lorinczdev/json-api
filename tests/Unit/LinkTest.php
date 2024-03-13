@@ -21,22 +21,22 @@ class LinkTest extends TestCase
         $this->assertSame('{"href":"https:\/\/related.com","meta":{"expected":"meta"}}', $serialized);
     }
 
-    public function testEmptyMetaIsObject(): void
+    public function testEmptyMetaIsExluded(): void
     {
         $link = Link::related('https://related.com', []);
 
         $serialized = json_encode($link);
 
-        $this->assertSame('{"href":"https:\/\/related.com","meta":{}}', $serialized);
+        $this->assertSame('{"href":"https:\/\/related.com"}', $serialized);
     }
 
-    public function testMissingMetaIsObject(): void
+    public function testMissingMetaIsExcluded(): void
     {
         $link = Link::related('https://related.com');
 
         $serialized = json_encode($link);
 
-        $this->assertSame('{"href":"https:\/\/related.com","meta":{}}', $serialized);
+        $this->assertSame('{"href":"https:\/\/related.com"}', $serialized);
     }
 
     public function testMetaCanBeAppended(): void
@@ -44,7 +44,7 @@ class LinkTest extends TestCase
         $link = Link::related('https://related.com', ['original' => 'meta']);
 
         $serialized = json_encode(
-            $link->withMeta(['expected' => 'meta'])->withMeta(["another" => "one"])
+            $link->withMeta(['expected' => 'meta'])->withMeta(['another' => 'one'])
         );
 
         $this->assertSame('{"href":"https:\/\/related.com","meta":{"original":"meta","expected":"meta","another":"one"}}', $serialized);
@@ -70,9 +70,6 @@ class LinkTest extends TestCase
 
         $links = json_encode($resource->toArray($request)['links']);
 
-        $this->assertSame('{"foo":{"href":"http:\/\/foo.com","meta":{}}}', $links);
-
-        JsonApiResource::resolveIdNormally();
-        JsonApiResource::resolveTypeNormally();
+        $this->assertSame('{"foo":{"href":"http:\/\/foo.com"}}', $links);
     }
 }

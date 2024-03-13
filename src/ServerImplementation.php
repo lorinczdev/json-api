@@ -7,7 +7,7 @@ namespace TiMacDonald\JsonApi;
 use JsonSerializable;
 use stdClass;
 
-final class JsonApiServerImplementation implements JsonSerializable
+final class ServerImplementation implements JsonSerializable
 {
     use Concerns\Meta;
 
@@ -24,15 +24,13 @@ final class JsonApiServerImplementation implements JsonSerializable
     }
 
     /**
-     * @internal
-     *
-     * @return array{version: string, meta: stdClass}
+     * @return array{version: string, meta?: stdClass}
      */
     public function jsonSerialize(): array
     {
         return [
             'version' => $this->version,
-            'meta' => (object) $this->meta,
+            ...$this->meta ? ['meta' => (object) $this->meta] : [],
         ];
     }
 }
